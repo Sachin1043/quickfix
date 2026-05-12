@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../../../apps/quickfix/quickfix/public/js/quickfix.bundle.js"],
+  "sourcesContent": ["\n\nfrappe.provide(\"quickfix\");\n\nquickfix.add_shop_name = function() {\n\n    console.log(\"Adding shop name to navbar...\");\n    \n    var shop_name = frappe.boot.quickfix_shop_name;\n\n    console.log(\"Shop name from boot:\", shop_name);\n\n    if (shop_name && !$(\".quickfix-shop-name\").length) {\n        \n        $(\".navbar-brand img\").after(\n            `<span \n                class=\"quickfix-shop-name\"\n                style=\"\n                    color: #555;\n                    font-size: 20px;\n                    font-weight:700;\n                    margin-left: 10px;\n                    vertical-align: middle;\n                    display: inline-block;\">\n                        ${shop_name}\n            </span>`\n        );\n    }\n}\n\n$(document).ready(function() {\n    quickfix.add_shop_name();\n});"],
+  "mappings": ";;AAEA,SAAO,QAAQ,UAAU;AAEzB,WAAS,gBAAgB,WAAW;AAEhC,YAAQ,IAAI,+BAA+B;AAE3C,QAAI,YAAY,OAAO,KAAK;AAE5B,YAAQ,IAAI,wBAAwB,SAAS;AAE7C,QAAI,aAAa,CAAC,EAAE,qBAAqB,EAAE,QAAQ;AAE/C,QAAE,mBAAmB,EAAE;AAAA,QACnB;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,0BASc;AAAA;AAAA,MAElB;AAAA,IACJ;AAAA,EACJ;AAEA,IAAE,QAAQ,EAAE,MAAM,WAAW;AACzB,aAAS,cAAc;AAAA,EAC3B,CAAC;",
+  "names": []
+}

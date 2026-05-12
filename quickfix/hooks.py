@@ -247,3 +247,124 @@ app_license = "mit"
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+# ---------------------------------------------
+# Method Resolution Order (MRO):
+# MRO defines the order in which Python looks for methods
+# in a class hierarchy (child → parent → base classes).
+#
+# When CustomJobCard extends JobCard, Python first checks
+# CustomJobCard, then JobCard, then base classes.
+#
+# Why super() is mandatory:
+# Calling super().validate() ensures that all existing
+# validation logic in the parent JobCard class is executed.
+#
+# If we skip super():
+# - Built-in validations will not run
+# - Data integrity may break
+# - Unexpected bugs may occur
+#
+# So calling super() is NON-NEGOTIABLE in overrides.
+# ---------------------------------------------
+
+# ---------------------------------------------
+# override_doctype_class vs doc_events:
+#
+# override_doctype_class:
+# - Replaces the entire controller class
+# - Allows full control over methods (validate, save, etc.)
+# - Suitable for deep customization
+#
+# doc_events:
+# - Hooks into specific events (validate, on_submit, etc.)
+# - Does NOT replace the original class
+# - Safer and easier for small changes
+#
+# When to use override_doctype_class:
+# - When you need to change core behavior
+# - When multiple methods need customization
+#
+# When to use doc_events:
+# - When adding small logic
+# - When you want minimal upgrade impact
+#
+# Note:
+# override_doctype_class has higher upgrade risk,
+# because it overrides core functionality.
+# ---------------------------------------------
+
+permission_query_conditions = {"Job Card":"quickfix.service_center.doctype.job_card.job_card.job_card_query"}      
+
+has_permission = { "Service Invoice":"quickfix.service_center.doctype.service_invoice.service_invoice.has_permission"}
+
+override_doctype_class = {"Job Card":"quickfix.overrides.custom_job_card.CustomJobCard"}
+
+doc_events = {
+    "*":{
+        "on_update":"quickfix.service_center.doctype.audit_log.audit_log.log_doctype",
+        "on_cancel":"quickfix.service_center.doctype.audit_log.audit_log.log_doctype",
+        "on_submit":"quickfix.service_center.doctype.audit_log.audit_log.log_doctype"
+    },
+    "Job Card":{
+        "validate":"quickfix.events.job_card.validate_handler"
+    }
+}
+
+after_install = "quickfix.events.job_card.after_install_doctype"
+
+before_uninstall = "quickfix.events.job_card.before_uninstall_doctype"
+
+extend_bootinfo = "quickfix.events.job_card.extend_bootinfo_settings"
+
+app_include_js = "quickfix.bundle.js"
+
+on_session_creation = "quickfix.service_center.doctype.audit_log.audit_log.user_on_creation"
+
+on_logout = "quickfix.service_center.doctype.audit_log.audit_log.user_on_logout"
+
+jinja = {
+    "methods": [
+        "quickfix.utils.get_shop_name"
+    ],
+    "filters": [
+        "quickfix.utils.format_job_id"
+    ]
+}
+
+website_route_rules = [
+    {
+        "from_route":"/track-job",
+        "to_route":"track-job"
+    }
+]
+
+portal_menu_items = [
+    {
+        "title":"Track My Job",
+        "route":"/track-job",
+        "rule":"All"
+    }
+]
+
+override_whitelisted_methods = { "frappe.client.get_count": "quickfix.api.custom_get_count"}
+
+
+fixtures = [
+    "Custom Field",
+    "Property Setter",
+    "Role",
+    "Workspace",
+    {
+        "dt": "Device Type",
+        "filters": [["name", "in", ["Mobile", "Laptop", "Tablet"]]]
+    },
+    "QuickFix Settings",
+]
+
+after_install = "quickfix.setup.install.after_install"
+
+after_install = "quickfix.monkey_patches.apply_all"
+
+doctype_list_js = {
+    "Job Card": "public/js/job_card_list.js"
+}
