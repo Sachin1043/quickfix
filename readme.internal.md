@@ -881,14 +881,21 @@ frm.set_df_property("customer_phone", "hidden", 1)
 Using f-strings directly inside SQL queries is unsafe because user input becomes part of the SQL query itself.
 Example:
 
+```python
+
 pythonquery = f"""
 SELECT *
 FROM `tabJob Card`
 WHERE device_type = '{device_type}'
 """
+```
+
 If a malicious value is passed by the user, the query can be manipulated and may expose unintended records. This is called SQL Injection.
 The safer approach is to use parameterized queries.
 Example:
+
+```python
+
 pythonquery = """
 SELECT
     name,
@@ -909,4 +916,6 @@ AND (
 frappe.db.sql(query, {
     "device_type": device_type
 })
+
+```
 In the parameterized pattern, the SQL query and the user input are handled separately. The database treats the value only as data instead of executable SQL, which prevents SQL Injection and escaping problems.
