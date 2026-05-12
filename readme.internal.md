@@ -874,11 +874,13 @@ Example:
 
 ```javascript
 frm.set_df_property("customer_phone", "hidden", 1)
+``
 
 ## SQL QUERY - F-STRING VS PARAMETERIZED QUERIES
 
 Using f-strings directly inside SQL queries is unsafe because user input becomes part of the SQL query itself.
 Example:
+
 pythonquery = f"""
 SELECT *
 FROM `tabJob Card`
