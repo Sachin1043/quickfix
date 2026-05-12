@@ -874,7 +874,7 @@ Example:
 
 ```javascript
 frm.set_df_property("customer_phone", "hidden", 1)
-``
+```
 
 ## SQL QUERY - F-STRING VS PARAMETERIZED QUERIES
 
