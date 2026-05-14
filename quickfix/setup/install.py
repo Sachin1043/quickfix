@@ -9,4 +9,3 @@ def after_install():
         "1",
         "Check"
     )
-    frappe.db.commit()

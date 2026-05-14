@@ -919,3 +919,240 @@ frappe.db.sql(query, {
 
 ```
 In the parameterized pattern, the SQL query and the user input are handled separately. The database treats the value only as data instead of executable SQL, which prevents SQL Injection and escaping problems.
+
+## Prepared Report vs Real-time Script Report
+
+Real-time Script Reports run the query every time the user opens the report. This gives the latest live data but can become slow for very large datasets.
+
+Prepared Reports generate the report in the background and store the result. Users later see the already generated report, so loading becomes much faster.
+
+Real-time Script Reports are useful for:
+- live data
+- current status monitoring
+- small or medium datasets
+
+Prepared Reports are useful for:
+- large datasets
+- heavy calculations
+- analytics and summary reports
+
+## Staleness Tradeoff
+
+Prepared Reports may show old data because the result is cached.
+
+Example:
+- report prepared at 10 AM
+- new records added at 11 AM
+- user still sees old report data until the report is prepared again
+
+This improves performance but may not always show the latest database changes.
+
+## Caching Risk
+
+If underlying data changes after the report is prepared, users continue seeing the old cached result.
+
+Examples:
+- new Job Cards may not appear
+- updated stock values may not appear
+- changed revenue totals may still show old values
+
+## Report Builder vs Script Report
+
+Report Builder is useful for simple reports where users only need basic filtering, sorting, grouping, and selecting columns without writing code. It is suitable for quick business reports and small datasets.
+
+Examples:
+- Customer History report
+- simple Job Card listings
+- basic filtering reports
+
+Script Reports should be used when the report requires custom Python logic, calculations, charts, summaries, dynamic columns, conditional formatting, or complex business rules.
+
+Examples:
+- Technician Performance Report
+- inventory analytics
+- revenue calculations
+- dynamic device type columns
+
+Using Report Builder in production can become a mistake when the report requires heavy calculations or advanced logic. For example, creating a large technician analytics report using only Report Builder would be difficult to maintain, slow for large datasets, and unable to support charts, summaries, or custom calculations properly.
+
+In such cases, Script Reports are the correct solution because they provide full backend control and better scalability.
+
+## Multi-language Printing
+
+Frappe determines the print language based on the current user's selected language.  
+All strings wrapped using:
+
+{{ _("text") }}
+
+are passed through Frappe’s translation engine.
+
+If a translation exists, the translated text is shown. Otherwise, the original English text is used.
+
+---
+
+## Using frappe.get_all() Directly Inside Jinja
+
+Example:
+
+{% set data = frappe.get_all("Spare Part") %}
+
+This is not recommended because:
+- database queries inside templates slow down rendering
+- business logic gets mixed with UI code
+- templates become harder to maintain
+
+---
+
+## Better Pattern - Precompute Data
+
+Better approach:
+
+Prepare data in Python before rendering.
+
+Example:
+
+def before_print(self):
+    self.precomputed_field = "value"
+
+Then use in template:
+
+{{ doc.precomputed_field }}
+
+Advantages:
+- faster rendering
+- cleaner templates
+- easier debugging
+- better separation of logic and UI
+
+
+## Raw Printing vs HTML PDF Rendering
+
+Raw printing sends ESC/POS commands directly to thermal printers. It is fast and mainly used for receipt printers.
+
+Frappe HTML-PDF rendering uses HTML/CSS templates rendered through WeasyPrint to generate PDFs. This supports rich layouts, tables, images, and styling.
+
+---
+
+## CSS Limitations in WeasyPrint
+
+Some CSS properties supported in browsers may fail in WeasyPrint, including:
+
+- position: sticky
+- backdrop-filter
+- flex gap
+
+WeasyPrint does not fully support all modern browser CSS features.
+
+---
+
+## Thermal Print Format
+
+A second minimal print format was created for 80mm thermal printers.
+
+It contains:
+- Job Number
+- Customer Name
+- Final Amount
+
+This layout is optimized for narrow receipt printers.
+
+---
+
+## Numeric Formatting
+
+Numeric and currency values are formatted using:
+
+frappe.utils.fmt_money()
+
+Without formatting:
+1105
+
+With formatting:
+₹ 1,105.00
+
+This improves readability and ensures proper currency formatting.
+
+## Background Job Queues
+
+Frappe uses background workers and Redis queues to execute long-running tasks asynchronously using frappe.enqueue().
+
+### Queue Types
+
+1. short
+Used for quick tasks like emails, notifications, and small updates.
+
+2. default
+Used for normal background jobs with medium execution time.
+
+3. long
+Used for heavy tasks like report generation, exports, backups, and batch processing.
+
+Using separate queues prevents small jobs from waiting behind heavy jobs.
+
+---
+
+## Why Background Jobs Are Used
+
+Background jobs improve user experience by moving slow operations outside the request-response cycle.
+
+Instead of making the user wait, tasks are processed asynchronously by workers.
+
+---
+
+## Email Sending Internals
+
+When frappe.enqueue() is used for sending emails:
+
+1. Job is added to Redis queue.
+2. Background worker picks the task.
+3. frappe.sendmail() connects to SMTP server.
+4. Email is sent asynchronously.
+
+This prevents UI delays during user actions.
+
+
+## Idempotency in Background Jobs
+
+Background jobs may accidentally run multiple times due to scheduler retries, crashes, or duplicate worker execution.
+
+To prevent duplicate processing, an idempotency guard is used.
+
+Before executing the low stock check job, the system checks whether the job has already run today using an Audit Log entry.
+
+If a log already exists, the function returns immediately without executing again.
+
+This ensures:
+- duplicate emails are avoided
+- duplicate stock processing is prevented
+- scheduler retries remain safe
+
+Idempotency ensures the same operation produces the same final result even if executed multiple times.
+
+## Long-running Jobs with Progress Updates
+
+Heavy background jobs such as report generation may take several minutes to complete.
+
+To improve user experience, realtime progress updates are sent using:
+
+frappe.publish_progress()
+
+During report generation, each processed month updates the progress percentage and status message.
+
+Internally:
+
+Background Job
+→ publish_progress()
+→ Realtime WebSocket event
+→ Browser UI updates progress bar
+
+## Frappe retry a failed background job by default
+
+This prevents users from thinking the system is stuck during long-running operations.
+
+By default, Frappe does not automatically retry failed background jobs.
+
+If a job fails, it is immediately moved to RQ Failed Job and the traceback is stored in Error Log.
+
+This prevents dangerous duplicate operations such as repeated emails, payments, or stock updates.
+
+Retries must be explicitly configured when needed.

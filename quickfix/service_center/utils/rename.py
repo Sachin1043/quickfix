@@ -8,5 +8,5 @@ def rename_technician(old_name, new_name):
         new_name,
         merge=False
     )
-    frappe.db.commit()
+
     return "Renamed successfully!"

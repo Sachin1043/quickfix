@@ -87,47 +87,70 @@ class JobCard(Document):
 
         # Background email (async)
         frappe.enqueue(
-            "quickfix.quickfix.api.send_job_ready_email",
+            "quickfix.api.send_job_ready_email",
             job_card=self.name
         )
-        
-def on_cancel(self):
-    self.db_set("status", "Cancelled")
+    def get_print_summary(self):
 
-    for row in self.parts_usage:
+        brand = self.device_brand or ""
 
-        stock_qty = frappe.db.get_value(
-            "Spare Part",
-            {"name": row.part},
-            "stock_qty"
-        )
+        model = self.device_model or ""
 
-        new_stock = (stock_qty or 0) + (row.quantity or 0)
+        return f"{self.customer_name} - {brand} {model}"
+            
+    # def on_cancel(self):
 
-        frappe.db.set_value(
-            "Spare Part",
-            row.part,
-            "stock_qty",
-            new_stock,
-            update_modified=False
-        )
-    invoice = frappe.db.get_value("Service Invoice", {"job_card": self.name}, "name")
+    #     for row in self.parts_usage:
 
-    if invoice:
-        inv_doc = frappe.get_doc("Service Invoice", invoice)
+    #         stock_qty = frappe.db.get_value(
+    #             "Spare Part",
+    #             {"name": row.part},
+    #             "stock_qty"
+    #         )
 
-        if inv_doc.docstatus == 1:  
-            inv_doc.cancel()
+    #         new_stock = (stock_qty or 0) + (row.quantity or 0)
 
-def on_trash(self):
+    #         frappe.db.set_value(
+    #             "Spare Part",
+    #             row.part,
+    #             "stock_qty",
+    #             new_stock,
+    #             update_modified=False
+    #         )
 
-    if self.status not in ["Draft", "Cancelled"]:
-        frappe.throw("Only Draft or Cancelled Job Cards can be deleted")
+    #     invoice = frappe.db.get_value(
+    #         "Service Invoice",
+    #         {"job_card": self.name},
+    #         "name"
+    #     )
 
-def on_update(self):
+    #     if invoice:
 
-    if not self.some_field:
-        self.db_set("some_field", "default_value")
+    #         try:
+
+    #             inv_doc = frappe.get_doc("Service Invoice", invoice)
+
+    #             if inv_doc.docstatus == 1:
+    #                 inv_doc.cancel()
+
+    #         except Exception:
+
+    #             frappe.log_error(
+    #                 frappe.get_traceback(),
+    #                 "Service Invoice Cancel Error"
+    #             )
+
+    #             raise
+
+    def on_trash(self):
+
+        if self.status not in ["Draft", "Cancelled"]:
+            frappe.throw("Only Draft or Cancelled Job Cards can be deleted")
+
+    def on_update(self):
+
+        if not self.some_field:
+            self.db_set("some_field", "default_value")
 
 def job_card_query(user):
 
@@ -146,8 +169,6 @@ def job_card_query(user):
 
     return ""
 	
-
-
 
 
 

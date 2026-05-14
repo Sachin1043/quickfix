@@ -324,7 +324,8 @@ on_logout = "quickfix.service_center.doctype.audit_log.audit_log.user_on_logout"
 
 jinja = {
     "methods": [
-        "quickfix.utils.get_shop_name"
+        "quickfix.utils.get_shop_name",
+        "quickfix.utils.generate_qr_code"
     ],
     "filters": [
         "quickfix.utils.format_job_id"
@@ -367,4 +368,10 @@ after_install = "quickfix.monkey_patches.apply_all"
 
 doctype_list_js = {
     "Job Card": "public/js/job_card_list.js"
+}
+
+scheduler_events = {
+    "daily":[
+        "quickfix.task.check_low_stock"
+    ]
 }

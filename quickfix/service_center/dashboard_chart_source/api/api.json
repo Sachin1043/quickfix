@@ -1,0 +1,13 @@
+{
+ "creation": "2026-05-13 12:43:20.068489",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart Source",
+ "idx": 0,
+ "modified": "2026-05-13 12:43:20.068489",
+ "modified_by": "Administrator",
+ "module": "Service Center",
+ "name": "API",
+ "owner": "Administrator",
+ "source_name": "API",
+ "timeseries": 0
+}

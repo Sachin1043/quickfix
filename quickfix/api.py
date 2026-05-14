@@ -36,12 +36,13 @@ def get_job_cards_safe():
             row.pop("customer_email",None)
     return data
 
+@frappe.whitelist()
 def send_job_ready_email(job_card):
 
     doc = frappe.get_doc("Job Card", job_card)
 
     frappe.sendmail(
-        recipients=[doc.owner],
+        recipients=[doc.customer_email],
         subject="Your Job Card is Ready",
         message=f"""
         Job Card {doc.name} is ready for delivery.
@@ -64,9 +65,6 @@ def custom_get_count(doctype, filters=None, debug=False, cache=False):
     
     return get_count(doctype, filters, debug, cache)
 
-    # api.py
-
-import frappe
 
 
 @frappe.whitelist()
@@ -100,3 +98,115 @@ def complete_job(job):
     doc.db_set("status","Completed")
 
     return "Job Completed!"
+
+
+@frappe.whitelist()
+def prepare_technician_report(filters=None):
+
+    frappe.enqueue(
+
+        method=generate_report,
+
+        queue="long",
+
+        timeout=300,
+
+        filters=filters
+    )
+
+    return "Report queued successfully"
+
+
+def generate_report(filters=None):
+
+    report = frappe.get_doc(
+        "Report",
+        "Technician Performance Report"
+    )
+
+    result = report.get_data(
+        filters=filters,
+        as_dict=True
+    )
+
+    frappe.get_doc({
+
+        "doctype": "Prepared Report",
+
+        "report_name": "Technician Performance Report",
+
+        "filters": frappe.as_json(filters),
+
+        "status": "Completed",
+
+        "report_end_time": frappe.utils.now(),
+
+        "output": frappe.as_json(result)
+
+    }).insert(ignore_permissions=True)
+
+
+import frappe
+
+
+@frappe.whitelist()
+def get_status_chart_data():
+
+    data = frappe.db.sql("""
+
+        SELECT
+            status,
+            COUNT(*) as count
+
+        FROM `tabJob Card`
+
+        GROUP BY status
+
+    """, as_dict=True)
+
+    return {
+
+        "labels": [d.status for d in data],
+
+        "datasets": [
+
+            {
+                "name": "Job Count",
+                "values": [d.count for d in data]
+            }
+        ]
+    }
+
+import frappe
+from frappe.utils import today
+
+
+@frappe.whitelist()
+def get_today_revenue():
+
+    revenue = frappe.db.sql("""
+
+        SELECT
+            SUM(final_amount)
+
+        FROM `tabJob Card`
+
+        WHERE
+            status = 'Delivered'
+            AND DATE(modified) = %s
+
+    """, today())
+
+    return revenue[0][0] or 0
+
+@frappe.whitelist()
+def start_revenue_report(year):
+
+    frappe.enqueue(
+        "quickfix.tasks.generate_monthly_revenue_report",
+        year=year,
+        queue="long",
+        timeout=600
+    )
+
+    return "Report generation started"

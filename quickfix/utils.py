@@ -1,5 +1,10 @@
 import frappe
 
+import qrcode
+import base64
+
+from io import BytesIO
+
 def send_urgent_alert(job_card, manager):
 
     try:
@@ -26,3 +31,23 @@ def format_job_id(job_id):
 
     return f"JOB#{job_id}"
 
+
+
+
+def generate_qr_code(docname):
+
+    url = frappe.utils.get_url(
+        f"/app/job-card/{docname}"
+    )
+
+    qr = qrcode.make(url)
+
+    buffer = BytesIO()
+
+    qr.save(buffer, format="PNG")
+
+    encoded = base64.b64encode(
+        buffer.getvalue()
+    ).decode()
+
+    return encoded

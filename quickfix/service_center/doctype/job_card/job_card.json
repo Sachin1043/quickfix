@@ -22,7 +22,7 @@
   "diagnosis_date",
   "priority",
   "parts_used_section",
-  "table_npzl",
+  "parts_usage",
   "financial_delivery_section",
   "parts_total",
   "labour_charge",
@@ -30,7 +30,8 @@
   "payment_status",
   "delivery_date",
   "remarks",
-  "status"
+  "status",
+  "amended_from"
  ],
  "fields": [
   {
@@ -125,11 +126,6 @@
    "label": "Parts Used"
   },
   {
-   "fieldname": "table_npzl",
-   "fieldtype": "Table",
-   "options": "Part Usage Entry"
-  },
-  {
    "fieldname": "financial_delivery_section",
    "fieldtype": "Section Break",
    "label": "Financial Delivery"
@@ -177,14 +173,30 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Draft\nPending Diagnosis\nAwaiting Customer Approval\nIn Repair\nReady for Delivery\nDelivered\nCancelled"
+   "options": "Draft\nPending Diagnosis\nAwaiting Customer Approval\nIn Repair\nReady for Delivery\nDelivered\nCancelled",
+   "search_index": 1
+  },
+  {
+   "fieldname": "parts_usage",
+   "fieldtype": "Table",
+   "options": "Part Usage Entry"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Job Card",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-28 16:39:43.140012",
+ "modified": "2026-05-13 11:10:58.681631",
  "modified_by": "Administrator",
  "module": "Service Center",
  "name": "Job Card",
