@@ -231,37 +231,3 @@ frappe.ui.form.on("Job Card", {
     }
 });
 
-frappe.ui.form.on("Job Card", {
-
-    refresh(frm) {
-
-        frm.add_custom_button(
-            "Generate Report",
-
-            function() {
-
-                frappe.call({
-
-                    method: "quickfix.api.start_revenue_report",
-
-                    args: {
-                        year: 2025
-                    },
-
-                    callback: function(r) {
-
-                        frappe.msgprint(
-                            "Report generation started successfully"
-                        );
-
-                    }
-
-                });
-
-            }
-
-        );
-
-    }
-
-});

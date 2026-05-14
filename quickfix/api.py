@@ -198,15 +198,3 @@ def get_today_revenue():
     """, today())
 
     return revenue[0][0] or 0
-
-@frappe.whitelist()
-def start_revenue_report(year):
-
-    frappe.enqueue(
-        "quickfix.tasks.generate_monthly_revenue_report",
-        year=year,
-        queue="long",
-        timeout=600
-    )
-
-    return "Report generation started"

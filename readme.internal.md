@@ -1156,3 +1156,152 @@ If a job fails, it is immediately moved to RQ Failed Job and the traceback is st
 This prevents dangerous duplicate operations such as repeated emails, payments, or stock updates.
 
 Retries must be explicitly configured when needed.
+
+## Scheduler Events
+
+Frappe uses scheduler_events in hooks.py to run automatic background jobs.
+
+### Daily Scheduler
+
+The low stock check job is registered under:
+
+"daily"
+
+This runs automatically once per day.
+
+### Cron Scheduler
+
+Monthly revenue report generation uses cron format:
+
+"0 2 1 * *"
+
+Meaning:
+- minute = 0
+- hour = 2
+- day = 1
+
+This runs at 2:00 AM on the 1st day of every month.
+
+---
+
+## Disabling Scheduler Per Site
+
+Scheduler can be disabled for a specific site using:
+
+bench --site sitename set-config pause_scheduler 1
+
+This is useful in development environments to prevent:
+- accidental emails
+- repeated test jobs
+- unfinished background tasks
+
+---
+
+## Worker Downtime Behavior
+
+If workers are down, scheduled jobs remain queued in Redis.
+
+When workers come back online, they continue processing pending jobs from the queue.
+
+This allows temporary worker downtime without immediately losing scheduled jobs.
+
+
+
+# N+1 PROBLEM - fix this
+
+job_cards = frappe.get_all("Job Card", fields=["name","assigned_technician"])
+    for jc in job_cards:
+        tech = frappe.get_doc("Technician", jc.assigned_technician)
+        print(tech.technician_name, tech.phone)
+
+Correcter version- 
+
+```python
+    jobcards = frappe.get_all(
+    "Job Card",
+    fields=["name", "assigned_technician"]
+    )
+
+    technician_list = []
+
+    for jc in jobcards:
+
+        technician_list.append(
+            jc.assigned_technician
+        )
+
+    technicians = frappe.get_all(
+        "Technician",
+
+        filters={
+            "name": ["in", technician_list]
+        },
+
+        fields=["name", "phone_number"]
+    )
+
+```
+
+##  Task B - Bulk operations:
+
+
+Bulk update of 1000 draft records
+
+```python
+import frappe
+
+def bulk_cancel_old_drafts():
+
+    frappe.db.sql("""
+
+        UPDATE `tabJob Card`
+
+        SET status = 'Cancelled'
+
+        WHERE status = 'Draft'
+
+    """)
+```
+
+## PART 2 — Bulk INSERT
+
+Requirement:
+
+Insert 500 Audit Logs using bulk_insert()
+
+
+```python
+import frappe
+
+def bulk_insert_audit_logs():
+
+    logs = []
+
+    for i in range(500):
+
+        logs.append(
+            (
+                f"LOG-{i}",
+                "low_stock_check"
+            )
+        )
+
+    frappe.db.bulk_insert(
+
+        "Audit Log",
+
+        fields=[
+            "name",
+            "action"
+        ],
+
+        values=logs
+
+    )
+
+```
+
+While comparing both slow and fast verison the final result will be
+
+bulk_insert() and single SQL UPDATE are significantly faster
+because they reduce multiple database round trips.

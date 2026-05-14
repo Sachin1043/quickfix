@@ -371,7 +371,15 @@ doctype_list_js = {
 }
 
 scheduler_events = {
-    "daily":[
+
+    "daily": [
         "quickfix.task.check_low_stock"
-    ]
+    ],
+
+    "cron": {
+        "0 2 1 * *": [
+            "quickfix.task.generate_monthly_revenue_report"
+        ]
+    }
+
 }
