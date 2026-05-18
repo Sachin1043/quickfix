@@ -1305,3 +1305,203 @@ While comparing both slow and fast verison the final result will be
 
 bulk_insert() and single SQL UPDATE are significantly faster
 because they reduce multiple database round trips.
+
+
+## Indexing
+
+Indexes improve query performance by allowing the database to quickly locate matching rows without scanning the full table.
+
+However, indexes should only be added to fields frequently used in:
+- filters
+- searches
+- joins
+- reports
+
+Over-indexing is harmful because every INSERT, UPDATE, and DELETE operation must also update all indexes.
+
+Too many indexes increase:
+- write overhead
+- storage usage
+- memory consumption
+- migration time
+
+Therefore, indexes should be added carefully only where query optimization is needed.
+
+## Report Performance Profiling
+
+SQL logging was enabled in site/quickfix-dev.localhost/site_config.json to inspect queries generated during report execution.
+
+After running the Technician Performance Report, the executed SQL queries were inspected from the logs.
+
+The slowest query involved filtering Job Cards using assigned_technician.
+
+To optimize performance, an index was added to the assigned_technician field using the field's Index option and bench migrate.
+
+This reduced full table scans and improved query lookup performance.
+
+The EXPLAIN command was used to verify that the database optimizer used the new index.
+
+
+## REST Resource API & Custom API
+
+GET /api/resource/Job Card - list Job Cards (use session cookie from browser)
+
+request - http://localhost:8001/api/resource/Job%20Card/
+
+reponse -
+
+```python
+{
+    "data": [
+        {
+            "name": "JC-2026-00002"
+        },
+        {
+            "name": "JC-2026-00004"
+        },
+        {
+            "name": "JC-2026-00005"
+        },
+        {
+            "name": "JC-2026-00006"
+        },
+        {
+            "name": "JC-2026-00003"
+        },
+        {
+            "name": "JC-2026-00007"
+        },
+        {
+            "name": "JC-2026-00001"
+        },
+        {
+            "name": "JC-2026-00008"
+        },
+        {
+            "name": "JC-2026-00011"
+        },
+        {
+            "name": "JC-2026-00010"
+        },
+        {
+            "name": "JC-2026-00009"
+        },
+        {
+            "name": "JC-2026-00012"
+        },
+        {
+            "name": "JC-2026-00013"
+        },
+        {
+            "name": "JC-2026-00014"
+        },
+        {
+            "name": "JC-2026-00015"
+        }
+    ]
+}
+```
+
+GET /api/resource/Job Card/JC-0001 - single doc
+
+request - http://localhost:8001/api/resource/Job%20Card/JC-2026-00002
+
+```python
+resposne -
+
+{
+    "data": {
+        "name": "JC-2026-00002",
+        "owner": "Administrator",
+        "creation": "2026-04-30 12:57:46.286143",
+        "modified": "2026-04-30 12:57:49.206188",
+        "modified_by": "Administrator",
+        "docstatus": 1,
+        "idx": 0,
+        "customer_name": "Ram",
+        "customer_phone": "9876543210",
+        "device_type": "Smartphone",
+        "problem_description": "<div class=\"ql-editor read-mode\"><p>test</p></div>",
+        "assigned_technician": "TECH-NEW",
+        "estimated_cost": 0.0,
+        "priority": "Normal",
+        "parts_total": 0.0,
+        "labour_charge": 500.0,
+        "final_amount": 0.0,
+        "payment_status": "Unpaid",
+        "status": "Draft",
+        "doctype": "Job Card",
+        "parts_usage": []
+    }
+}
+
+```
+
+POST /api/resource/Spare Part - create a part
+
+request - http://localhost:8001/api/resource/Spare%20Part
+
+response - 
+
+```python
+
+{
+    "data": {
+        "name": "si2q16uvik",
+        "owner": "Administrator",
+        "creation": "2026-05-18 13:48:53.088884",
+        "modified": "2026-05-18 13:48:53.088884",
+        "modified_by": "Administrator",
+        "docstatus": 0,
+        "idx": 0,
+        "part_name": "Cable",
+        "unit_cost": 100.0,
+        "selling_price": 150.0,
+        "stock_qty": 10.0,
+        "reorder_level": 5.0,
+        "is_active": 1,
+        "doctype": "Spare Part"
+    }
+}
+
+```
+
+PUT /api/resource/Spare Part/PART-0001 - update a field
+
+request - http://localhost:8001/api/resource/Spare%20Part/si2q16uvik
+
+response -
+
+```python
+
+{
+    "data": {
+        "name": "si2q16uvik",
+        "owner": "Administrator",
+        "creation": "2026-05-18 13:48:53.088884",
+        "modified": "2026-05-18 15:20:40.374804",
+        "modified_by": "Administrator",
+        "docstatus": 0,
+        "idx": 0,
+        "part_name": "Cable wire",
+        "unit_cost": 100.0,
+        "selling_price": 140.0,
+        "stock_qty": 11.0,
+        "reorder_level": 5.0,
+        "is_active": 1,
+        "doctype": "Spare Part"
+    }
+}
+
+```
+DELETE /api/resource/Spare Part/PART-0001 - delete it
+
+request - http://localhost:8001/api/resource/Spare%20Part/si2q16uvik
+
+response - 
+
+```python
+{
+    "data": "ok"
+}
+```
