@@ -1,8 +1,36 @@
+import re
+
 import frappe
+from datetime import date
+
 
 @frappe.whitelist()
 def get_job_summary():
-    return "Hello from api"
+
+    job_card_name = frappe.form_dict.get("job_card_name")
+
+    if not frappe.db.exists("Job Card", job_card_name):
+
+        frappe.local.response["http_status_code"] = 404
+
+        return {
+            "error": "Not found"
+        }
+
+    doc = frappe.get_doc("Job Card", job_card_name)
+
+    return {
+
+        "job_card": doc.name,
+
+        "customer_name": doc.customer_name,
+
+        "status": doc.status,
+
+        "final_amount": doc.final_amount,
+
+        "created_date": date.today()
+    }
 
 @frappe.whitelist()
 def share_job_card(job_card_name,user_email):
@@ -198,3 +226,212 @@ def get_today_revenue():
     """, today())
 
     return revenue[0][0] or 0
+
+
+import frappe
+
+
+@frappe.whitelist(allow_guest=True)
+def get_job_by_phone():
+
+    ip = frappe.local.request_ip
+
+    key = f"limit:{ip}"
+
+    count = frappe.cache().get_value(key) or 0
+
+    if int(count) >= 5:
+
+        frappe.throw("Too many requests")
+
+    frappe.cache().set_value(
+        key,
+        int(count) + 1,
+        expires_in_sec=60
+    )
+
+    phone = frappe.form_dict.get("phone")
+
+    if not phone:
+        frappe.throw("Phone number is required")
+
+    if not re.match(r'^\d{10}$', phone):
+        frappe.throw("Invalid phone number. Must be 10 digits only.")
+
+    return frappe.get_all(
+    "Job Card",
+    filters={
+        "customer_phone": phone
+    },
+    fields=["name", "status"]
+    )
+
+import frappe
+import hmac
+import hashlib
+import json
+
+
+@frappe.whitelist(allow_guest=True)
+def payment_webhook():
+
+    payload = frappe.request.data
+
+    secret = frappe.conf.get(
+        "payment_webhook_secret",
+        ""
+    )
+
+    signature = frappe.get_request_header(
+        "X-Signature"
+    )
+
+    expected = hmac.new(
+        secret.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(
+        expected,
+        signature or ""
+    ):
+
+        frappe.throw(
+            "Invalid signature",
+            frappe.AuthenticationError
+        )
+
+    data = json.loads(payload)
+
+    if frappe.db.exists(
+        "Audit Log",
+        {
+            "action": "payment_received",
+            "document_name": data["ref"]
+        }
+    ):
+
+        return {
+            "status": "duplicate",
+            "message": "Already processed"
+        }
+
+    doc = frappe.get_doc(
+        "Job Card",
+        data["ref"]
+    )
+
+    doc.payment_status = "Paid"
+
+    doc.save()
+
+    frappe.get_doc({
+
+        "doctype": "Audit Log",
+
+        "action": "payment_received",
+
+        "document_name": data["ref"]
+
+    }).insert(ignore_permissions=True)
+
+
+    return {
+        "status": "ok"
+    }
+
+@frappe.whitelist()
+def get_status_chart_data():
+
+    cache_key = "status_chart"
+
+    cached = frappe.cache().get_value(
+        cache_key
+    )
+
+    if cached:
+        return cached
+
+    data = frappe.db.sql("""
+
+        SELECT
+            status,
+            COUNT(*) as count
+
+        FROM `tabJob Card`
+
+        GROUP BY status
+
+    """, as_dict=True)
+
+    frappe.cache().set_value(
+        cache_key,
+        data,
+        expires_in_sec=300
+    )
+
+    return data
+logger = frappe.logger("quickfix", with_more_info=True)
+
+@frappe.whitelist(allow_guest=True)
+def handle_webhook():
+
+
+    try:
+        logger.info("Webhook received")
+
+        data = frappe.request.get_json()
+
+        logger.info(f"Payload received: {data}")
+
+        doc = frappe.get_doc({
+            "doctype": "Note",
+            "title": data.get("order_id"),
+            "content": f"Order received with amount {data.get('amount')}"
+        })
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit() 
+
+        logger.info(f"Note created successfully for order {data.get('order_id')}")
+
+
+    except Exception:
+        logger.error("Webhook processing failed")
+
+        frappe.log_error(
+            title="Webhook Handler Failed",
+            message=frappe.get_traceback()
+        )
+
+@frappe.whitelist()
+def test_logger():
+
+    logger = frappe.logger(
+        "quickfix",
+        allow_site=True
+    )
+
+    logger.info("TEST LOGGER WORKING")
+
+    return "done"
+
+@frappe.whitelist(allow_guest=True)
+def get_job_status(job_id):
+
+    job = frappe.db.get_value(
+
+        "Job Card",
+
+        job_id,
+
+        [
+            "status",
+            "device_type",
+            "final_amount"
+        ],
+
+        as_dict=True
+    )
+
+    return job

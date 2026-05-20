@@ -1,7 +1,7 @@
 from frappe.utils import today
 
 import frappe
-
+import requests
 
 def check_low_stock():
 
@@ -80,3 +80,50 @@ def failing_background_job():
     raise Exception(
         "Intentional background job failure"
     )
+
+
+def send_webhook(job_card_name):
+
+    settings = frappe.get_single(
+        "QuickFix Settings"
+    )
+
+    if not settings.webhook_url:
+        return
+
+    doc = frappe.get_doc(
+        "Job Card",
+        job_card_name
+    )
+
+    payload = {
+
+        "event": "job_submitted",
+
+        "job_card": doc.name,
+
+        "customer": doc.customer_name,
+
+        "amount": doc.final_amount
+    }
+
+    try:
+
+        r = requests.post(
+            settings.webhook_url,
+            json=payload,
+            timeout=5
+        )
+
+        r.raise_for_status()
+
+    except Exception as e:
+
+        frappe.log_error(
+            f"Webhook failed: {e}",
+            "Webhook Error"
+        )
+
+def failing_job():
+
+    x = 10 / 0

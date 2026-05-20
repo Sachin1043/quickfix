@@ -339,14 +339,6 @@ website_route_rules = [
     }
 ]
 
-portal_menu_items = [
-    {
-        "title":"Track My Job",
-        "route":"/track-job",
-        "rule":"All"
-    }
-]
-
 override_whitelisted_methods = { "frappe.client.get_count": "quickfix.api.custom_get_count"}
 
 
@@ -383,3 +375,14 @@ scheduler_events = {
     }
 
 }
+override_whitelisted_methods = {
+    "handle_webhook": "quickfix.api.handle_webhook"
+}
+
+portal_menu_items = [
+    {
+        "title": "Track My Job",
+        "route": "/track-job",
+        "rule": "All"
+    }
+]

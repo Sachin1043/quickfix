@@ -1,3 +1,47 @@
-<h1>Track My Job</h1>
+<h2>Track Your Job</h2>
 
-<p>Welcome to quickfix portal</p>
+<input
+    type="text"
+    id="job_id"
+    placeholder="Enter Job Card ID"
+>
+
+<button onclick="trackJob()">
+    Search
+</button>
+
+<div id="result"></div>
+
+
+<script>
+
+async function trackJob() {
+
+    let job_id = document.getElementById(
+        "job_id"
+    ).value
+
+    let response = await fetch(
+
+        `/api/method/quickfix.api.get_job_status?job_id=${job_id}`
+
+    )
+
+    let data = await response.json()
+
+    let job = data.message
+
+    document.getElementById(
+        "result"
+    ).innerHTML = `
+
+        <p>Status: ${job.status}</p>
+
+        <p>Device: ${job.device_type}</p>
+
+        <p>Amount: ${job.final_amount}</p>
+
+    `
+}
+
+</script>

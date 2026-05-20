@@ -2,6 +2,7 @@
 from frappe.model.document import Document
 
 import frappe
+from frappe.utils.pdf import get_pdf
 
 class JobCard(Document):       
 
@@ -48,8 +49,17 @@ class JobCard(Document):
                 frappe.throw(
                 f"Insufficient stock for part {row.part_name}. Available: {stck}, Required: {row.quantity}"
             )
-    
+    def on_update(self):
+
+        frappe.cache().delete_value(
+            "status_chart"
+        )
     def on_submit(self):
+
+        frappe.enqueue(
+        "quickfix.task.send_webhook",
+        job_card_name=self.name
+    )   
   
         for row in self.parts_usage:
 
@@ -90,6 +100,46 @@ class JobCard(Document):
             "quickfix.api.send_job_ready_email",
             job_card=self.name
         )
+
+        self.send_invoice_email()
+
+    def send_invoice_email(self):
+        try:
+ 
+            pdf_content = get_pdf(
+                frappe.get_print(
+                    "Job Card",
+                    self.name
+                )
+            )
+            frappe.sendmail(
+                recipients=[self.customer_email],
+                subject=f"Invoice for Job {self.name}",
+                message=f"""
+                    Dear {self.customer_name},
+
+                    Please find your invoice attached for job {self.name}.
+
+                    Amount: {self.final_amount}
+
+                    Thank you for choosing QuickFix!
+                """,
+                attachments=[{
+                    "fname": f"Invoice-{self.name}.pdf",
+                    "fcontent": pdf_content
+                }]
+            )
+
+            frappe.log_error(
+                title="Invoice Email Sent",
+                message=f"Email sent to {self.customer_email} for {self.name}"
+            )
+
+        except Exception:
+            frappe.log_error(
+                title="Invoice Email Failed",
+                message=frappe.get_traceback()
+            )
     def get_print_summary(self):
 
         brand = self.device_brand or ""
@@ -147,10 +197,6 @@ class JobCard(Document):
         if self.status not in ["Draft", "Cancelled"]:
             frappe.throw("Only Draft or Cancelled Job Cards can be deleted")
 
-    def on_update(self):
-
-        if not self.some_field:
-            self.db_set("some_field", "default_value")
 
 def job_card_query(user):
 

@@ -408,11 +408,6 @@ def on_trash(self):
     if self.status not in ["Draft", "Cancelled"]:
         frappe.throw("Only Draft or Cancelled Job Cards can be deleted")
 
-def on_update(self):
-
-    if not self.some_field:
-        self.db_set("some_field", "default_value")
-
 def job_card_query(user):
 
     roles = frappe.get_roles(user)
@@ -1305,7 +1300,7 @@ While comparing both slow and fast verison the final result will be
 
 bulk_insert() and single SQL UPDATE are significantly faster
 because they reduce multiple database round trips.
-
+---
 
 ## Indexing
 
@@ -1326,7 +1321,7 @@ Too many indexes increase:
 - migration time
 
 Therefore, indexes should be added carefully only where query optimization is needed.
-
+---
 ## Report Performance Profiling
 
 SQL logging was enabled in site/quickfix-dev.localhost/site_config.json to inspect queries generated during report execution.
@@ -1339,9 +1334,9 @@ To optimize performance, an index was added to the assigned_technician field usi
 
 This reduced full table scans and improved query lookup performance.
 
-The EXPLAIN command was used to verify that the database optimizer used the new index.
+cmd - `tail -f logs/frappe.log`
 
-
+---
 ## REST Resource API & Custom API
 
 GET /api/resource/Job Card - list Job Cards (use session cookie from browser)
@@ -1401,7 +1396,7 @@ reponse -
     ]
 }
 ```
-
+---
 GET /api/resource/Job Card/JC-0001 - single doc
 
 request - http://localhost:8001/api/resource/Job%20Card/JC-2026-00002
@@ -1436,7 +1431,7 @@ resposne -
 }
 
 ```
-
+---
 POST /api/resource/Spare Part - create a part
 
 request - http://localhost:8001/api/resource/Spare%20Part
@@ -1465,7 +1460,7 @@ response -
 }
 
 ```
-
+---
 PUT /api/resource/Spare Part/PART-0001 - update a field
 
 request - http://localhost:8001/api/resource/Spare%20Part/si2q16uvik
@@ -1494,6 +1489,7 @@ response -
 }
 
 ```
+---
 DELETE /api/resource/Spare Part/PART-0001 - delete it
 
 request - http://localhost:8001/api/resource/Spare%20Part/si2q16uvik
@@ -1505,3 +1501,268 @@ response -
     "data": "ok"
 }
 ```
+
+---
+
+## Difference between session cookie auth and token auth
+
+Session cookie authentication uses the browser login session and stores a session cookie (sid) to identify the user. It is mainly used for browser-based applications and requires CSRF protection.
+
+Token authentication uses an API key and API secret sent in the Authorization header. It does not depend on browser sessions or CSRF tokens and is mainly used for server-to-server communication and external API integrations.
+
+---
+
+## Rate limiting & abuse protection
+
+allow_guest=True endpoints are publicly accessible without login, so they can be abused if not protected properly.
+
+Common risks:
+
+Brute force attacks - attackers repeatedly try different inputs to fetch data.
+API spam / DDoS - too many requests can slow down or crash the server.
+Data leakage - sensitive customer information may become publicly accessible.
+
+A simple rate limiter was implemented using frappe.cache() to track request count per IP address per minute and block requests exceeding the limit.
+
+---
+## Incoming webhook Endpoint
+
+Why use hmac.compare_digest() instead of == ?
+
+hmac.compare_digest() prevents timing attacks. Normal == comparison may reveal partial matching information based on execution time, allowing attackers to guess the signature gradually.
+
+Deduplication Strategy
+
+Payment gateways may resend the same webhook event multiple times due to retries or network issues. Before processing payment, the system checks Audit Log for an existing payment record using the same reference number. If the event was already processed, the webhook returns a duplicate response and skips updating payment again
+
+
+## Server Script Sandbox Analysis
+
+### What Python functions/modules are blocked in Server Scripts?
+
+Server Scripts run inside a restricted sandbox for security reasons. Dangerous modules and functions such as `os`, `sys`, `subprocess`, file operations, shell execution, and unrestricted imports are blocked.
+
+---
+
+### 3 Things You Cannot Do in Server Scripts
+
+1. Access the server file system directly.
+2. Execute shell/terminal commands.
+3. Install or import arbitrary external Python packages.
+
+---
+
+### When Server Scripts Are Acceptable
+
+1. Small business rule automations like field updates or validations.
+2. Simple scheduled tasks or lightweight internal APIs.
+
+---
+
+### When App Code Should Be Preferred
+
+1. Complex business logic and large workflows.
+2. Integrations, background jobs, or performance-critical features.
+
+---
+
+### Governance / Maintainability Risk
+
+Server Scripts are stored in the database instead of version-controlled app files. This makes tracking changes, code reviews, debugging, testing, and deployment management more difficult. Large usage of Server Scripts can lead to poor maintainability and hidden business logic.
+
+## Frappe uses Redis caching to improve performance and reduce repeated database queries.
+
+Common cached items include:
+1. Bootinfo
+2. DocType metadata
+3. Website context
+4. Translations
+5. User permissions
+
+Running frappe.clear_cache() clears cached data and forces the browser and backend to reload fresh information.
+
+## Debugging Stale UI
+
+### Old JS still showing after frontend changes
+
+After modifying JavaScript files, the browser may continue using old bundled assets from cache.
+
+To rebuild frontend assets:
+
+```bash
+bench build --app quickfix
+
+```
+This command rebuilds the app's JS/CSS bundles and updates static assets.
+
+### To clear cached assets completely:
+
+After changing a DocType, metadata cache can be cleared using:
+```bash
+bench clear-cache
+
+    or
+
+frappe.clear_cache()
+```
+
+
+## Production Debugging Without developer_mode
+
+If a bug occurs only in production, debugging can be done using Error Logs, Audit Logs, and structured logger output.
+
+1. First check Error Log records to identify:
+   - exception type
+   - traceback
+   - failing method
+   - affected document or API
+
+2. Use Audit Log records to trace user actions and system events before the failure. This helps identify what operation triggered the issue.
+
+3. Use `frappe.logger()` output from application logs to track execution flow, request data, retries, warnings, and background job behavior.
+
+4. Correlate timestamps between:
+   - Error Log
+   - Audit Log
+   - logger output
+
+   to reconstruct the sequence of events leading to the bug.
+
+5. Add additional temporary structured logging in suspicious areas to gather more production-specific information without enabling developer_mode.
+
+This approach allows safe production debugging without exposing sensitive debugging features to end users.
+
+
+## Ignore_permissions analysis
+
+Problem 1 — Anyone Can Access All Data
+
+* allow_guest=True means no login needed.
+* ignore_permissions=True means no permission check. 
+
+Together — literally anyone in the world can call this URL and get all your customer data.
+
+# Always ask these 3 questions before using ignore_permissions
+
+ 1. Is there a logged in user here?
+ 2. Is this a guest accessible endpoint?
+ 3. Is this really a system action?
+
+# Only use ignore_permissions when:
+
+- It is a background job
+- It is a webhook from external system
+- No user input is involved
+- It is purely system generated data
+
+## Private vs public files
+
+Upload a test file as a private attachment on a Job Card
+
+```python
+
+# bench --site quickfix-dev.localhost console
+
+with open("/home/frappe/test.pdf", "rb") as f:
+    content = f.read()
+
+file_doc = frappe.get_doc({
+    "doctype": "File",
+    "file_name": "test.pdf",
+    "attached_to_doctype": "Job Card",
+    "attached_to_name": "JC-2026-00001",
+    "is_private": 1,        # This makes it private
+    "content": content
+})
+file_doc.insert()
+frappe.db.commit()
+print(file_doc.file_url)
+
+```
+
+this enables the private method
+
+if we access using this `/files/filename.pdf directly`  it show the result as `404 Not Found`
+
+if we use `/private/files/filename.pdf` 
+if
+    user have no permission - `403 Forbidden — No permission`
+
+if user have permission 
+    result - `File downloads successfully`
+
+## Secrets management
+
+The issues with API key hardcoded in Python source code
+
+problem - if we push the code to github or host some where means anyone can see our api Key and use it, this is very bad practise of hard coding the api Key
+
+Public = Anyone can open the link(`Shop logo , sales price`)
+Private = Only authorized person can open the link (`Customer ID , Customer invoice , repair photo`)
+
+```python
+def payment_webhook():
+    api_key = frappe.conf.get("payment_api_key")
+    
+    if not api_key:
+        frappe.throw("Payment API key not configured")
+    
+    requests.post("https://payment.com", headers={
+        "Authorization": api_key
+    })
+```
+
+here key is not in github , key is in yous json so the api key is safe to use.
+
+1. why should secrets NEVER be in common_site_config.json
+ans - because this also a public acess file anyone can seen our api Key that's what we should never use secrets in common_site_config.json
+
+
+2. what is the risk of committing site_config.json to git?
+
+Risk 1 — Database password is exposed
+Risk 2 — Payment API key is exposed
+Risk 3 — Git history never forgets
+Risk 4 — Encryption key is exposed
+
+to avoid these risk use-
+
+```bash
+nano .gitignore
+```
+
+
+## Debugging Email Failures
+
+When an email fails to send, the following should be checked:
+
+1. Email Queue
+   - Check the email status:
+     Not Sent,
+     Sent,
+     Error
+   - Inspect:
+     recipients,
+     subject,
+     error field
+   - Verify whether the email was queued correctly.
+
+2. SMTP Logs / frappe.log
+   - Check logs/frappe.log for:
+     SMTP authentication failures,
+     invalid credentials,
+     connection refused,
+     timeout errors
+   - These logs help identify mail server issues.
+
+3. Error Log
+   - Open Setup → Error Log
+   - Check traceback and exception details related to sendmail or email queue processing.
+   - Useful for debugging unexpected backend failures.
+
+Typical email failure causes include:
+- invalid recipient email
+- missing SMTP configuration
+- wrong email password
+- blocked SMTP access
+- internet/network issues
