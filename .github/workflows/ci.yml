@@ -101,6 +101,7 @@ jobs:
         run: |
           bench --site test_site execute \
             "quickfix.tests.setup_test_data.load_test_fixtures"
+            --args "{}"
 
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
