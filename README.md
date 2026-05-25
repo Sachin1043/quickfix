@@ -1,5 +1,5 @@
 ### quickfix
-
+![CI](https://github.com/Sachin1043/quickfix/actions/workflows/ci.yml/badge.svg)
 quickfix
 
 ### Installation
