@@ -1,6 +1,9 @@
 import frappe
 
-import qrcode
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
 import base64
 
 from io import BytesIO
