@@ -1766,3 +1766,13 @@ Typical email failure causes include:
 - wrong email password
 - blocked SMTP access
 - internet/network issues
+
+## How Frappe Decides Which Language to Render
+
+Frappe determines the display language by checking the `language` field on
+the currently logged-in User document — if set, that language is used for
+all `_()` and `__()` translations for that session. If the user has no
+language set, Frappe falls back to the system-wide default language
+configured in System Settings. At render time, Frappe loads the matching
+translation CSV or database Translation records for that language code and
+replaces every wrapped string before sending the response to the browser.

@@ -83,45 +83,26 @@ def failing_background_job():
 
 
 def send_webhook(job_card_name):
-
-    settings = frappe.get_single(
-        "QuickFix Settings"
-    )
-
-    if not settings.webhook_url:
+    doc = frappe.get_doc("Job Card", job_card_name)
+    
+    webhook_url = frappe.db.get_single_value("QuickFix Settings", "webhook_url")
+    
+    if not webhook_url:
         return
 
-    doc = frappe.get_doc(
-        "Job Card",
-        job_card_name
-    )
-
     payload = {
-
-        "event": "job_submitted",
-
         "job_card": doc.name,
-
-        "customer": doc.customer_name,
-
-        "amount": doc.final_amount
+        "customer_name": doc.customer_name,
+        "status": doc.status,
+        "final_amount": doc.final_amount
     }
 
     try:
-
-        r = requests.post(
-            settings.webhook_url,
-            json=payload,
-            timeout=5
-        )
-
-        r.raise_for_status()
-
-    except Exception as e:
-
+        requests.post(webhook_url, json=payload)
+    except requests.exceptions.ConnectionError:
         frappe.log_error(
-            f"Webhook failed: {e}",
-            "Webhook Error"
+            frappe.get_traceback(),
+            "Webhook Connection Error"
         )
 
 def failing_job():
