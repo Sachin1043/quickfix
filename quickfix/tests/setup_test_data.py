@@ -6,7 +6,7 @@ import frappe
 def load_test_fixtures():
     fixtures_path = os.path.join(
         os.path.dirname(__file__),
-        "..",
+        "quickfix",
         "fixtures",
         "test"
     )
@@ -14,7 +14,6 @@ def load_test_fixtures():
     fixture_files = [
         "test_roles.json",
         "device_type.json",
-        "test",
         "quickfix_settings.json"
     ]
 
