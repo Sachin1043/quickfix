@@ -96,6 +96,12 @@ jobs:
           bench --site test_site set-config developer_mode 1
         env:
           CI: 'Yes'
+      - name: Load Test Fixtures
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench --site test_site execute \
+            "quickfix.tests.setup_test_data.load_test_fixtures"
+            --args "{}"
 
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
