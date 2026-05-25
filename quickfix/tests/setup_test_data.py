@@ -13,7 +13,8 @@ def load_test_fixtures():
 
     fixture_files = [
         "test_roles.json",
-        "device_types.json",
+        "device_type.json",
+        "test",
         "quickfix_settings.json"
     ]
 
