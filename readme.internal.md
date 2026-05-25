@@ -1881,3 +1881,96 @@ Smartphone, Laptop, Tablet exist only in fixtures/, CI never loads
 them and any test that needs device_type="Smartphone" will fail. Keeping
 them in both folders is intentional — fixtures/ is for real site
 installation, fixtures/test/ is only for test environment.
+
+
+## CI Pipeline Verification — Step 5
+
+### Errors encountered when setting up the workflow
+
+**Error 1 — Badge not rendering**
+The README badge line had extra characters gve before the !
+at the beginning. This broke the markdown image syntax and the
+badge did not render. Removing those extra characters fixed it.
+
+**Error 2 — NameError: name 'quickfix' is not defined**
+The setup_test_data.py file did not exist in the tests folder.
+CI tried to execute load_test_fixtures but could not find the
+file or the function. Creating the file and committing it to
+git fixed this error.
+
+### Total run time and slowest step
+
+Total CI pipeline run time is nearly 2 minutes. The slowest
+steps are bench init and bench setup requirements because they
+download frappe and all Python packages from the internet on
+every run. The actual test execution step is faster than the
+setup steps.
+
+### One step to make pipeline faster
+
+The bench setup requirements step downloads all Python packages
+every run. Caching the pip download folder using actions/cache
+would save this download time on every run after the first one.
+We already cache pip but caching the frappe-bench virtualenv
+itself would save even more time.
+
+### Difference between run-tests and run-tests --coverage
+
+bench run-tests --app quickfix runs all tests and tells you
+only whether each test passed or failed.
+
+bench run-tests --app quickfix --coverage does the same but
+also generates a report showing which lines of your Python code
+were actually executed during the tests and which lines were
+never touched by any test.
+
+Passing tests tell you that your code works for the cases you
+tested. The coverage report tells you which parts of your code
+were never tested at all — bugs could be hiding in those lines.
+
+The coverage report is written to:
+frappe-bench/apps/quickfix/coverage.xml
+
+### If a test passes locally but fails in CI
+
+**Cause 1 — Missing fixture data**
+Local database already has master data like Smartphone device
+type from previous work. CI starts with a completely empty
+fresh database. If load_test_fixtures did not run or fixture
+files are missing, those records do not exist and tests fail
+with a linking error.
+
+**Cause 2 — File not committed to git**
+A file was created locally but never added with git add and
+git commit. CI only has what is in GitHub. That file does not
+exist in CI and any import of it throws a ModuleNotFoundError.
+
+**Cause 3 — Package not in requirements.txt**
+A Python package was installed manually on local machine but
+never added to requirements.txt. CI installs only from
+requirements.txt so that package is missing and any import
+throws an ImportError.
+
+
+## CI Sanity Test — Step 6
+
+### Why is a sanity test valuable in a production CI pipeline?
+
+A normal application test like test_submit_deducts_stock assumes
+that "Smartphone" device type already exists, QuickFix Settings
+is already configured, and all roles are already present. If
+fixture loading silently failed, every single application test
+fails with a linking error or missing record error. You see 22
+failures and think your application code is broken. You spend
+30 minutes debugging code that has no bugs.
+
+The sanity test runs before all application tests and checks
+only one thing — did the test environment set up correctly?
+Did all fixture data load into the database? If the sanity test
+fails, you immediately know the problem is in CI setup and not
+in your application code. You fix the fixture problem in 2
+minutes instead of wasting 30 minutes debugging the wrong thing.
+
+Normal application tests catch bugs in your application code.
+The sanity test catches broken test environment setup. These are
+two completely different classes of problems and you need both.
