@@ -5,9 +5,7 @@ import frappe
 
 def load_test_fixtures():
     fixtures_path = frappe.get_app_path(
-        "quickfix",
-        "fixtures",
-        "test"
+        "fixtures"
     )
 
     fixture_files = [
