@@ -1776,3 +1776,108 @@ language set, Frappe falls back to the system-wide default language
 configured in System Settings. At render time, Frappe loads the matching
 translation CSV or database Translation records for that language code and
 replaces every wrapped string before sending the response to the browser.
+
+
+## CI Architecture Notes
+
+### Why does Frappe CI need MariaDB?
+
+When we run tests, every test creates documents and reads from the
+database. If MariaDB is not running, bench cannot create the test site
+and all tests will fail immediately. Without CI, we have to manually
+start the database and run tests ourselves. CI automatically starts
+MariaDB as a service container before running any tests.
+
+### Why does ERPNext CI use --skip-assets?
+
+Building assets means compiling all JavaScript and CSS files using
+Node.js. This takes around 5 to 8 minutes. Our server tests are pure
+Python tests - they never open a browser or use any JS files. So
+building assets is a waste of time in CI. We skip it to make CI faster.
+
+### Does CI need bench start?
+
+No. bench start is used in local development to start the web server
+and background workers together. In CI we just run the test command
+directly. Tests call Python functions directly without needing any
+web server to be running.
+
+### Does CI need cleanup after tests finish?
+
+No. Every CI run gets a completely fresh virtual machine from GitHub.
+When the run finishes GitHub automatically destroys that machine
+completely. So there is nothing to clean up. The next CI run always
+starts from a brand new clean machine.
+
+### Why --skip-redis-config-generation in bench init?
+
+Redis is already running as a service container in CI. If we don't
+skip this, bench will try to start its own Redis and conflict with
+the existing one. So we tell bench to skip generating Redis config
+files.
+
+### Why pin Python version to 3.11?
+
+Frappe version 15 needs Python 3.11 specifically. If we don't pin it,
+CI might use a different Python version and break during installation.
+We learned this when Python 3.10 caused a build error in our CI.
+
+## Test Data Strategy
+
+### Why is it dangerous to put Job Card or Technician in fixtures?
+
+If a Job Card record comes from a fixture, it is the same record
+for every test. When test_submit_deducts_stock submits that Job Card,
+its status becomes Submitted. Now test_cancel_restores_stock tries
+to use the same record — but it is already submitted by the previous
+test. Both tests fighting on the same record causes errors and
+wrong results. So each test must create its own fresh Job Card using
+factory functions. That way every test works on a separate record
+and no test affects another test.
+
+### What happens if we add a mandatory field and forget to update fixture?
+
+If we add a mandatory field like warranty_period to Spare Part doctype
+and forget to add it in the fixture JSON file, when CI runs
+load-fixtures it will try to insert the record without that field.
+Frappe will throw a mandatory field error and CI will fail. The fix
+is to always update the fixture JSON file whenever we add a new
+mandatory field to the doctype.
+
+Factory functions are safer here — if we forget to add the field
+in create_spare_part(), it throws a clear MandatoryError immediately
+on the first test. We know exactly what to fix.
+
+### Why must test fixtures and production fixtures be kept strictly separate?
+
+Test fixtures contain fake data like "Test Part" with a fake price
+of 75.0. This data exists only to make tests pass — it has no real
+business meaning. If test fixtures and production fixtures are mixed
+together and someone runs load-fixtures on the live customer site,
+the customer will see fake test records like "Test Part" appearing
+in their real Spare Parts list. This causes confusion and mistakes
+in their real business data. So test data must never go into
+production fixtures. Keep them in separate folders always.
+
+## Test Fixtures — Step 3
+
+### What does ignore_if_duplicate=True do?
+
+When we run load_test_fixtures() on local machine, first run inserts
+"QuickFix Settings" successfully. If we run the same script again next
+day, that record already exists. Without ignore_if_duplicate=True,
+Frappe throws a DuplicateEntryError and the whole setup script fails.
+With ignore_if_duplicate=True, Frappe silently skips that record and
+continues. So the setup script is safe to run any number of times
+without breaking anything.
+
+### Why are Device Types in both fixtures/ and fixtures/test/?
+
+fixtures/ folder is loaded when someone installs the app on a real
+production site. fixtures/test/ folder is loaded by CI before running
+tests. CI does not automatically load fixtures/ — it only loads what
+load_test_fixtures() tells it to load from fixtures/test/. So if
+Smartphone, Laptop, Tablet exist only in fixtures/, CI never loads
+them and any test that needs device_type="Smartphone" will fail. Keeping
+them in both folders is intentional — fixtures/ is for real site
+installation, fixtures/test/ is only for test environment.
