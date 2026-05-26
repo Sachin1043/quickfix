@@ -100,8 +100,7 @@ jobs:
         working-directory: /home/runner/frappe-bench
         run: |
           bench --site test_site execute \
-            "quickfix.tests.setup_test_data.load_test_fixtures"
-            --args "{}"
+            "importlib.import_module('quickfix.tests.setup_test_data').load_test_fixtures"
 
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
