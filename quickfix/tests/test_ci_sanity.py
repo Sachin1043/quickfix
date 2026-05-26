@@ -35,7 +35,7 @@ class TestCISanity(FrappeTestCase):
         )
 
         # Check all three custom Roles exist
-        roles = ["QuickFix Technician", "QuickFix Manager", "QuickFix Receptionist"]
+        roles = ["QF Service Staff", "QF Technician", "QF Manager"]
         for role in roles:
             self.assertTrue(
                 frappe.db.exists("Role", role),
