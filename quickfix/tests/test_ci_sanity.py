@@ -20,7 +20,7 @@ class TestCISanity(FrappeTestCase):
         """
 
         # Check all three Device Types exist
-        device_types = ["Smartphone", "Laptop", "Tablet"]
+        device_types = ["Mobile", "Laptop", "Tablet"]
         for device_type in device_types:
             self.assertTrue(
                 frappe.db.exists("Device Type", device_type),
