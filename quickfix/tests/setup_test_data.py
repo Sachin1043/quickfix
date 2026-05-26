@@ -7,11 +7,11 @@ def load_test_fixtures():
     app_path = os.path.dirname(
         os.path.dirname(os.path.abspath(__file__))
     )
-    fixtures_path = os.path.join(app_path, "fixtures", "test")
+    fixtures_path = os.path.join(app_path, "fixtures")  
 
     fixture_files = [
         "test_roles.json",
-        "device_types.json",
+        "device_type.json",
         "quickfix_settings.json"
     ]
 
