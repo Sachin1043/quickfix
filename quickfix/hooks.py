@@ -386,3 +386,5 @@ portal_menu_items = [
         "rule": "All"
     }
 ]
+
+before_tests = "quickfix.tests.setup_test_data.load_test_fixtures"

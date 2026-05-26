@@ -96,17 +96,7 @@ jobs:
           bench --site test_site set-config developer_mode 1
         env:
           CI: 'Yes'
-      - name: Load Test Fixtures
-        working-directory: /home/runner/frappe-bench
-        run: |
-          env/bin/python -c "
-          import frappe
-          frappe.init(site='test_site', sites_path='/home/runner/frappe-bench/sites')
-          frappe.connect()
-          from quickfix.tests.setup_test_data import load_test_fixtures
-          load_test_fixtures()
-          frappe.destroy()
-          "
+      
 
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
